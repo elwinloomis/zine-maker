@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mini-Zine Imposition Tool</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Mini-Zine Imposition Tool</h1>
+      <p>
+        Build a printable one-sheet 8-page zine from local images. Everything runs locally in your browser.
+      </p>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls-panel">
+        <h2>1) Load Images</h2>
+        <div class="control-row">
+          <label for="imagePicker" class="control-label">Folder or Files</label>
+          <input
+            id="imagePicker"
+            type="file"
+            multiple
+            webkitdirectory
+            directory
+            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+          />
+        </div>
+        <div class="control-row compact-row">
+          <button id="autoAssignBtn" type="button">Auto-assign</button>
+          <button id="clearBtn" type="button" class="secondary">Clear</button>
+        </div>
+        <p id="loadStatus" class="status">No images loaded.</p>
+
+        <h2>2) Assign Images</h2>
+        <p class="hint">
+          Default order is alphabetical. You can reassign any slot below.
+        </p>
+        <div id="assignmentList" class="assignment-list"></div>
+
+        <h3>Loaded Images</h3>
+        <ol id="imageCatalog" class="image-catalog"></ol>
+      </section>
+
+      <section class="panel preview-panel">
+        <h2>Preview (11 x 8.5 in landscape)</h2>
+        <p class="hint">Tip: Drag one panel and drop on another panel to swap assignments.</p>
+        <div class="preview-wrap">
+          <canvas id="previewCanvas" aria-label="Zine sheet preview"></canvas>
+        </div>
+        <div class="fold-guide-wrap">
+          <h3>How To Fold</h3>
+          <img src="how_to_fold.jpg" alt="How to fold mini-zine reference" class="fold-guide-image" />
+        </div>
+      </section>
+
+      <section class="panel options-panel">
+        <h2>3) Options</h2>
+        <div class="control-grid">
+          <label for="marginPreset">Margin preset (in)</label>
+          <select id="marginPreset">
+            <option value="0">0</option>
+            <option value="0.0625">0.0625</option>
+            <option value="0.125" selected>0.125</option>
+            <option value="0.1875">0.1875</option>
+            <option value="0.25">0.25</option>
+            <option value="custom">Custom</option>
+          </select>
+
+          <label for="marginInput">Margin custom (in)</label>
+          <input id="marginInput" type="number" min="0" max="1" step="0.001" value="0.125" />
+
+          <label><input id="useGutterLayout" type="checkbox" /> Compensate printer edge with inner gutters</label>
+
+          <label for="printerMarginIn">Printer non-printable edge (in)</label>
+          <input id="printerMarginIn" type="number" min="0" max="1" step="0.01" value="0.25" disabled />
+
+          <label for="innerGutterIn">Inner gutter between panels (in)</label>
+          <input id="innerGutterIn" type="number" min="0" max="1" step="0.01" value="0.125" disabled />
+
+          <label for="scaleMode">Scale mode</label>
+          <select id="scaleMode">
+            <option value="contain" selected>Contain (fit entire image)</option>
+            <option value="cover">Cover (fill/crop)</option>
+          </select>
+
+          <label for="exportDpi">Export DPI</label>
+          <input id="exportDpi" type="number" min="72" max="1200" step="1" value="300" />
+
+          <label for="pageNumberStyle">Page number style</label>
+          <select id="pageNumberStyle" disabled>
+            <option value="number" selected>Numbers only (1, 2, 3)</option>
+            <option value="page">Page + number (Page 1)</option>
+          </select>
+        </div>
+
+        <fieldset class="toggles">
+          <legend>Guides & labels</legend>
+          <label><input id="showFoldGuides" type="checkbox" checked /> Show fold/grid guides</label>
+          <label><input id="showCutGuide" type="checkbox" checked /> Show cut guide</label>
+          <label><input id="showLabels" type="checkbox" checked /> Show panel labels</label>
+          <label><input id="showPageNumbers" type="checkbox" /> Show page numbers</label>
+        </fieldset>
+
+        <h2>4) Export</h2>
+        <div class="control-row compact-row">
+          <button id="exportPngBtn" type="button">Export PNG</button>
+          <button id="printViewBtn" type="button" class="secondary">Open Print View</button>
+        </div>
+        <p id="exportStatus" class="status"></p>
+
+        <h3>Printing Notes</h3>
+        <ul class="instructions">
+          <li>Print in landscape orientation.</li>
+          <li>Print at 100% / Actual Size.</li>
+          <li>Do not use "Fit to page" if it changes scale.</li>
+          <li>Fold on guide lines, cut the center slit, then fold into the mini-zine.</li>
+        </ul>
+
+        <h3>Page (Image Notes)</h3>
+        <ul class="instructions">
+          <li>Actual page image size is 2.75 in x 4.25 in.</li>
+          <li>That equals 825 x 1275 px at 300 DPI.</li>
+          <li>4 x 6 photo source images also work nicely.</li>
+          <li>Use portrait-oriented source images for best fit.</li>
+          <li>Contain mode keeps the full image visible without cropping.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <small>Supported input: PNG, JPG/JPEG, WebP. Unsupported files are ignored.</small>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
