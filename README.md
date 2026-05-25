@@ -34,6 +34,13 @@ git push origin main
 
 After pushing to `main`, verify the live app at the GitHub Pages URL above.
 
+## Recent Updates (2026-05-25)
+
+- Added optional alternate cover placement mode:
+  - Standard order: image 1 = Front Cover, image 8 = Back Cover.
+  - Alternate order: image 7 = Front Cover, image 6 = Back Cover, image 8 = Page 1.
+  - Panel labels and optional number overlays follow the active image order.
+
 ## Recent Updates (2026-05-18)
 
 - Added drag-and-swap panel reassignment directly in preview (drop one panel on another to swap).
@@ -108,6 +115,16 @@ Bottom row (upright):
 - Manual page/image slot reassignment
 - Drag-and-swap directly on preview panels (drag one panel to another to swap assignments)
 - Assignment order: Front Cover, Page 1, Page 2, Page 3, Page 4, Page 5, Page 6, Back Cover
+- Optional alternate cover placement auto-assignment mode:
+  - image 7 -> Front Cover
+  - image 8 -> Page 1
+  - image 1 -> Page 2
+  - image 2 -> Page 3
+  - image 3 -> Page 4
+  - image 4 -> Page 5
+  - image 5 -> Page 6
+  - image 6 -> Back Cover
+  - Preview panel labels and optional number overlays use the alternate source-image order.
 - Margin in inches (preset + custom input)
 - Optional printer-margin compensation mode:
   - Printer non-printable edge input (for example `0.25 in`)

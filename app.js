@@ -11,6 +11,8 @@
   const PREVIEW_PPI = 100;
   const PRESET_MARGINS = [0, 0.0625, 0.125, 0.1875, 0.25];
   const SLOT_ORDER = ["front", "page_1", "page_2", "page_3", "page_4", "page_5", "page_6", "back"];
+  const STANDARD_AUTO_ASSIGN_ORDER = SLOT_ORDER;
+  const ALT_COVER_AUTO_ASSIGN_ORDER = ["page_2", "page_3", "page_4", "page_5", "page_6", "back", "front", "page_1"];
   const SLOT_LABELS = {
     front: "Front Cover",
     page_1: "Page 1",
@@ -48,6 +50,7 @@
     showLabels: true,
     showPageNumbers: false,
     pageNumberStyle: "number",
+    useAltCoverPlacement: false,
     exportDpi: 300,
     // Drag state is purely UI/preview interaction state (no export impact).
     dragState: {
@@ -62,6 +65,8 @@
     autoAssignBtn: document.getElementById("autoAssignBtn"),
     clearBtn: document.getElementById("clearBtn"),
     loadStatus: document.getElementById("loadStatus"),
+    useAltCoverPlacement: document.getElementById("useAltCoverPlacement"),
+    assignmentModeHelp: document.getElementById("assignmentModeHelp"),
     assignmentList: document.getElementById("assignmentList"),
     imageCatalog: document.getElementById("imageCatalog"),
     previewCanvas: document.getElementById("previewCanvas"),
@@ -87,6 +92,7 @@
   function init() {
     bindEvents();
     syncGutterControlsEnabled();
+    syncAssignmentModeHelp();
     renderAssignmentList();
     renderCatalog();
     renderPreview();
@@ -102,7 +108,7 @@
       autoAssign();
       renderAssignmentList();
       renderPreview();
-      setLoadStatus("Auto-assigned images alphabetically (with filename slot matching when possible).");
+      setLoadStatus(getAutoAssignStatusMessage());
     });
 
     ui.clearBtn.addEventListener("click", () => {
@@ -115,6 +121,15 @@
       setLoadStatus("Cleared all images and assignments.");
       setExportStatus("");
       ui.imagePicker.value = "";
+    });
+
+    ui.useAltCoverPlacement.addEventListener("change", () => {
+      state.useAltCoverPlacement = ui.useAltCoverPlacement.checked;
+      syncAssignmentModeHelp();
+      autoAssign();
+      renderAssignmentList();
+      renderPreview();
+      setLoadStatus(getAutoAssignStatusMessage());
     });
 
     ui.marginPreset.addEventListener("change", () => {
@@ -322,6 +337,7 @@
       img,
       width: img.naturalWidth || img.width,
       height: img.naturalHeight || img.height,
+      order: index + 1,
       sortName: getSortName(file)
     };
   }
@@ -355,30 +371,51 @@
   function autoAssign() {
     const assignment = createEmptyAssignment();
     const usedIds = new Set();
+    const slotOrder = getAutoAssignOrder();
 
-    // First pass: try to honor semantic filename matches (front, back, page_1, etc.).
-    for (const slot of SLOT_ORDER) {
-      const matched = state.images.find((asset) => {
-        if (usedIds.has(asset.id)) {
-          return false;
+    if (!state.useAltCoverPlacement) {
+      // First pass: try to honor semantic filename matches (front, back, page_1, etc.).
+      for (const slot of slotOrder) {
+        const matched = state.images.find((asset) => {
+          if (usedIds.has(asset.id)) {
+            return false;
+          }
+          return nameLooksLikeSlot(asset.file.name, slot);
+        });
+        if (matched) {
+          assignment[slot] = matched.id;
+          usedIds.add(matched.id);
         }
-        return nameLooksLikeSlot(asset.file.name, slot);
-      });
-      if (matched) {
-        assignment[slot] = matched.id;
-        usedIds.add(matched.id);
       }
     }
 
     // Second pass: fill any still-empty slots by alphabetical file order.
     const remaining = state.images.filter((asset) => !usedIds.has(asset.id));
-    for (const slot of SLOT_ORDER) {
+    for (const slot of slotOrder) {
       if (!assignment[slot] && remaining.length) {
         assignment[slot] = remaining.shift().id;
       }
     }
 
     state.assignment = assignment;
+  }
+
+  function getAutoAssignOrder() {
+    return state.useAltCoverPlacement ? ALT_COVER_AUTO_ASSIGN_ORDER : STANDARD_AUTO_ASSIGN_ORDER;
+  }
+
+  function getAutoAssignStatusMessage() {
+    if (state.useAltCoverPlacement) {
+      return "Auto-assigned with alternate cover placement: image 7 is Front Cover and image 6 is Back Cover.";
+    }
+    return "Auto-assigned images alphabetically (with filename slot matching when possible).";
+  }
+
+  function syncAssignmentModeHelp() {
+    ui.useAltCoverPlacement.checked = state.useAltCoverPlacement;
+    ui.assignmentModeHelp.textContent = state.useAltCoverPlacement
+      ? "Alternate: image 7 is Front Cover, image 6 is Back Cover, image 8 starts Page 1."
+      : "Standard: image 1 is Front Cover, image 8 is Back Cover.";
   }
 
   function nameLooksLikeSlot(filename, slot) {
@@ -498,6 +535,7 @@
       showLabels: state.showLabels,
       showPageNumbers: state.showPageNumbers,
       pageNumberStyle: state.pageNumberStyle,
+      useAltCoverPlacement: state.useAltCoverPlacement,
       dragState: state.dragState
     });
   }
@@ -683,16 +721,16 @@
   }
 
   function drawPageNumber(ctx, panel, contentRect, options) {
-    const pageNumber = getLogicalPageNumber(panel.slot);
+    const pageNumber = getPanelNumber(panel, options);
     if (pageNumber == null) {
-      // Covers intentionally get no page number.
+      // Standard mode omits covers; alternate mode uses source-image numbers.
       return;
     }
 
     // Folded-reading convention requested by user:
     // odd pages on lower-left, even pages on lower-right.
     const isLeft = pageNumber % 2 === 1;
-    const text = options.pageNumberStyle === "page" ? `Page ${pageNumber}` : String(pageNumber);
+    const text = formatPanelNumber(pageNumber, options);
     const ppi = options.ppi;
     const inset = Math.max(6, ppi * 0.07);
     const fontSize = Math.max(10, Math.round(ppi * 0.11));
@@ -717,6 +755,26 @@
   function getLogicalPageNumber(slot) {
     const match = slot.match(/^page_(\d+)$/);
     return match ? Number.parseInt(match[1], 10) : null;
+  }
+
+  function getPanelNumber(panel, options) {
+    if (options.useAltCoverPlacement) {
+      return getAssignedImageOrder(panel.slot);
+    }
+    return getLogicalPageNumber(panel.slot);
+  }
+
+  function formatPanelNumber(pageNumber, options) {
+    if (options.pageNumberStyle !== "page") {
+      return String(pageNumber);
+    }
+    return options.useAltCoverPlacement ? `Image ${pageNumber}` : `Page ${pageNumber}`;
+  }
+
+  function getAssignedImageOrder(slot) {
+    const imageId = state.assignment[slot];
+    const asset = state.imageById.get(imageId);
+    return asset ? asset.order : null;
   }
 
   function drawPanelBoundaries(ctx, ppi) {
@@ -778,7 +836,7 @@
 
   function drawPanelLabel(ctx, panel, ppi) {
     const rect = getPanelRectPx(panel, ppi);
-    const label = `${SLOT_LABELS[panel.slot]}${panel.rotation ? " (180°)" : ""}`;
+    const label = getPanelLabel(panel);
     const pad = Math.max(6, ppi * 0.07);
     const fontSize = Math.max(10, Math.round(ppi * 0.12));
 
@@ -799,6 +857,17 @@
     ctx.textBaseline = "top";
     ctx.fillText(label, boxX + 6, boxY + 4);
     ctx.restore();
+  }
+
+  function getPanelLabel(panel) {
+    const rotationLabel = panel.rotation ? " (180°)" : "";
+    if (!state.useAltCoverPlacement) {
+      return `${SLOT_LABELS[panel.slot]}${rotationLabel}`;
+    }
+
+    const imageOrder = getAssignedImageOrder(panel.slot);
+    const imageLabel = imageOrder == null ? "No image" : `Image ${imageOrder}`;
+    return `${imageLabel} / ${SLOT_LABELS[panel.slot]}${rotationLabel}`;
   }
 
   function drawDragOverlay(ctx, dragState, ppi) {
@@ -994,7 +1063,8 @@
       showCutGuide: state.showCutGuide,
       showLabels: state.showLabels,
       showPageNumbers: state.showPageNumbers,
-      pageNumberStyle: state.pageNumberStyle
+      pageNumberStyle: state.pageNumberStyle,
+      useAltCoverPlacement: state.useAltCoverPlacement
     });
 
     canvas.toBlob((blob) => {
@@ -1031,7 +1101,8 @@
       showCutGuide: state.showCutGuide,
       showLabels: state.showLabels,
       showPageNumbers: state.showPageNumbers,
-      pageNumberStyle: state.pageNumberStyle
+      pageNumberStyle: state.pageNumberStyle,
+      useAltCoverPlacement: state.useAltCoverPlacement
     });
 
     const dataUrl = canvas.toDataURL("image/png");

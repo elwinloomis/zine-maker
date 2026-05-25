@@ -444,11 +444,44 @@ Optional config:
   "dpi": 300,
   "margin_in": 0.125,
   "sizing_mode": "contain",
+  "alternate_cover_placement": false,
   "background": "white",
   "guides": "none",
   "output_format": "pdf"
 }
 ```
+
+### 10.1 Alternate cover placement
+
+The implementation supports an optional auto-assignment mode for source image sets where the front/back covers sit in the middle of the sorted image sequence.
+
+Standard sorted-image assignment:
+
+| Image order | Logical slot |
+|---:|---|
+| 1 | front |
+| 2 | page_1 |
+| 3 | page_2 |
+| 4 | page_3 |
+| 5 | page_4 |
+| 6 | page_5 |
+| 7 | page_6 |
+| 8 | back |
+
+Alternate sorted-image assignment:
+
+| Image order | Logical slot |
+|---:|---|
+| 1 | page_2 |
+| 2 | page_3 |
+| 3 | page_4 |
+| 4 | page_5 |
+| 5 | page_6 |
+| 6 | back |
+| 7 | front |
+| 8 | page_1 |
+
+When enabled, this mode changes auto-assignment from loaded image order. Preview panel labels and optional number overlays also reflect the active source-image order, so the visible imposed sheet can be checked as `3, 2, 1, 8 / 4, 5, 6, 7`. The physical imposition layout remains unchanged.
 
 ---
 
@@ -573,10 +606,20 @@ for item in layout:
 
 ---
 
-## 15. Implementation Addendum (2026-05-18)
+## 15. Implementation Addendum
 
 Additional implemented features beyond this base PRD:
 
+- Alternate cover placement auto-assignment:
+  - image 7 -> Front Cover
+  - image 8 -> Page 1
+  - image 1 -> Page 2
+  - image 2 -> Page 3
+  - image 3 -> Page 4
+  - image 4 -> Page 5
+  - image 5 -> Page 6
+  - image 6 -> Back Cover
+  - Preview labels and optional number overlays follow source image order in this mode.
 - Drag-and-swap reassignment directly on the preview canvas.
 - Optional page numbers:
   - Covers omitted
