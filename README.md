@@ -4,6 +4,36 @@ This project is a self-contained browser app for imposing 8 zine pages onto one 
 
 No backend, no uploads, no network calls, and no CDN dependencies.
 
+## Live App
+
+- GitHub Pages: https://elwinloomis.github.io/zine-maker/
+- Source repository: https://github.com/elwinloomis/zine-maker
+
+## Release Policy
+
+This repository is public and is intended as a shareable release build.
+
+- Only push finished, public-ready changes to `main`.
+- Keep local-only development assets (for example test image sets and private notes) out of git.
+- Use local branches for in-progress work, and merge/push when a release is ready.
+- Keep sensitive/private files out of version control.
+- GitHub Pages deploys the public app from the `main` branch.
+
+## Release Workflow
+
+```bash
+git status
+git checkout -b dev/<feature-name>
+# make and test changes
+git add README.md index.html styles.css app.js one_sheet_8_page_zine_imposition_prd.md
+git commit -m "Describe the public-ready change"
+git checkout main
+git merge dev/<feature-name>
+git push origin main
+```
+
+After pushing to `main`, verify the live app at the GitHub Pages URL above.
+
 ## Recent Updates (2026-05-18)
 
 - Added drag-and-swap panel reassignment directly in preview (drop one panel on another to swap).

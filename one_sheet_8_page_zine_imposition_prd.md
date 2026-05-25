@@ -148,9 +148,9 @@ Bottom row art is upright.
 
 ```text
 +----------+----------+----------+----------+
-| Page 6   | Page 5   | Page 4   | Page 3   |   top row, rotated 180 degrees
+| Page 4   | Page 3   | Page 2   | Page 1   |   top row, rotated 180 degrees
 +----------+----------+----------+----------+
-| Back     | Front    | Page 1   | Page 2   |   bottom row, upright
+| Page 5   | Page 6   | Back     | Front    |   bottom row, upright
 +----------+----------+----------+----------+
 ```
 
@@ -192,40 +192,40 @@ Front, Page 1, Page 2, Page 3, Page 4, Page 5, Page 6, Back
 
 | Slot | Row | Col | x in | y in | w in | h in | Rotation |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| page_6 | 0 | 0 | 0.00 | 0.00 | 2.75 | 4.25 | 180 |
-| page_5 | 0 | 1 | 2.75 | 0.00 | 2.75 | 4.25 | 180 |
-| page_4 | 0 | 2 | 5.50 | 0.00 | 2.75 | 4.25 | 180 |
-| page_3 | 0 | 3 | 8.25 | 0.00 | 2.75 | 4.25 | 180 |
-| back | 1 | 0 | 0.00 | 4.25 | 2.75 | 4.25 | 0 |
-| front | 1 | 1 | 2.75 | 4.25 | 2.75 | 4.25 | 0 |
-| page_1 | 1 | 2 | 5.50 | 4.25 | 2.75 | 4.25 | 0 |
-| page_2 | 1 | 3 | 8.25 | 4.25 | 2.75 | 4.25 | 0 |
+| page_4 | 0 | 0 | 0.00 | 0.00 | 2.75 | 4.25 | 180 |
+| page_3 | 0 | 1 | 2.75 | 0.00 | 2.75 | 4.25 | 180 |
+| page_2 | 0 | 2 | 5.50 | 0.00 | 2.75 | 4.25 | 180 |
+| page_1 | 0 | 3 | 8.25 | 0.00 | 2.75 | 4.25 | 180 |
+| page_5 | 1 | 0 | 0.00 | 4.25 | 2.75 | 4.25 | 0 |
+| page_6 | 1 | 1 | 2.75 | 4.25 | 2.75 | 4.25 | 0 |
+| back | 1 | 2 | 5.50 | 4.25 | 2.75 | 4.25 | 0 |
+| front | 1 | 3 | 8.25 | 4.25 | 2.75 | 4.25 | 0 |
 
 ### 5.3 Placement table in PDF points
 
 | Slot | Row | Col | x pt | y pt | w pt | h pt | Rotation |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| page_6 | 0 | 0 | 0 | 0 | 198 | 306 | 180 |
-| page_5 | 0 | 1 | 198 | 0 | 198 | 306 | 180 |
-| page_4 | 0 | 2 | 396 | 0 | 198 | 306 | 180 |
-| page_3 | 0 | 3 | 594 | 0 | 198 | 306 | 180 |
-| back | 1 | 0 | 0 | 306 | 198 | 306 | 0 |
-| front | 1 | 1 | 198 | 306 | 198 | 306 | 0 |
-| page_1 | 1 | 2 | 396 | 306 | 198 | 306 | 0 |
-| page_2 | 1 | 3 | 594 | 306 | 198 | 306 | 0 |
+| page_4 | 0 | 0 | 0 | 0 | 198 | 306 | 180 |
+| page_3 | 0 | 1 | 198 | 0 | 198 | 306 | 180 |
+| page_2 | 0 | 2 | 396 | 0 | 198 | 306 | 180 |
+| page_1 | 0 | 3 | 594 | 0 | 198 | 306 | 180 |
+| page_5 | 1 | 0 | 0 | 306 | 198 | 306 | 0 |
+| page_6 | 1 | 1 | 198 | 306 | 198 | 306 | 0 |
+| back | 1 | 2 | 396 | 306 | 198 | 306 | 0 |
+| front | 1 | 3 | 594 | 306 | 198 | 306 | 0 |
 
 ### 5.4 Placement table in pixels at 300 DPI
 
 | Slot | Row | Col | x px | y px | w px | h px | Rotation |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| page_6 | 0 | 0 | 0 | 0 | 825 | 1275 | 180 |
-| page_5 | 0 | 1 | 825 | 0 | 825 | 1275 | 180 |
-| page_4 | 0 | 2 | 1650 | 0 | 825 | 1275 | 180 |
-| page_3 | 0 | 3 | 2475 | 0 | 825 | 1275 | 180 |
-| back | 1 | 0 | 0 | 1275 | 825 | 1275 | 0 |
-| front | 1 | 1 | 825 | 1275 | 825 | 1275 | 0 |
-| page_1 | 1 | 2 | 1650 | 1275 | 825 | 1275 | 0 |
-| page_2 | 1 | 3 | 2475 | 1275 | 825 | 1275 | 0 |
+| page_4 | 0 | 0 | 0 | 0 | 825 | 1275 | 180 |
+| page_3 | 0 | 1 | 825 | 0 | 825 | 1275 | 180 |
+| page_2 | 0 | 2 | 1650 | 0 | 825 | 1275 | 180 |
+| page_1 | 0 | 3 | 2475 | 0 | 825 | 1275 | 180 |
+| page_5 | 1 | 0 | 0 | 1275 | 825 | 1275 | 0 |
+| page_6 | 1 | 1 | 825 | 1275 | 825 | 1275 | 0 |
+| back | 1 | 2 | 1650 | 1275 | 825 | 1275 | 0 |
+| front | 1 | 3 | 2475 | 1275 | 825 | 1275 | 0 |
 
 ---
 
@@ -485,8 +485,8 @@ The implementation is correct when:
 3. Page order is:
 
 ```text
-Top row:    page_6, page_5, page_4, page_3
-Bottom row: back, front, page_1, page_2
+Top row:    page_4, page_3, page_2, page_1
+Bottom row: page_5, page_6, back, front
 ```
 
 4. Top-row pages are rotated 180 degrees.
@@ -514,14 +514,14 @@ PANEL_W_IN = SHEET_W_IN / COLS      # 2.75
 PANEL_H_IN = SHEET_H_IN / ROWS      # 4.25
 
 layout = [
-  {slot: "page_6", row: 0, col: 0, rotation: 180},
-  {slot: "page_5", row: 0, col: 1, rotation: 180},
-  {slot: "page_4", row: 0, col: 2, rotation: 180},
-  {slot: "page_3", row: 0, col: 3, rotation: 180},
-  {slot: "back",   row: 1, col: 0, rotation: 0},
-  {slot: "front",  row: 1, col: 1, rotation: 0},
-  {slot: "page_1", row: 1, col: 2, rotation: 0},
-  {slot: "page_2", row: 1, col: 3, rotation: 0}
+  {slot: "page_4", row: 0, col: 0, rotation: 180},
+  {slot: "page_3", row: 0, col: 1, rotation: 180},
+  {slot: "page_2", row: 0, col: 2, rotation: 180},
+  {slot: "page_1", row: 0, col: 3, rotation: 180},
+  {slot: "page_5", row: 1, col: 0, rotation: 0},
+  {slot: "page_6", row: 1, col: 1, rotation: 0},
+  {slot: "back",   row: 1, col: 2, rotation: 0},
+  {slot: "front",  row: 1, col: 3, rotation: 0}
 ]
 
 for item in layout:
@@ -573,15 +573,7 @@ for item in layout:
 
 ---
 
-## 15. Local Implementation Addendum (2026-05-18)
-
-The current local implementation in this folder intentionally uses this panel map:
-
-Top row (rotated 180):
-- Page 4 | Page 3 | Page 2 | Page 1
-
-Bottom row (upright):
-- Page 5 | Page 6 | Back Cover | Front Cover
+## 15. Implementation Addendum (2026-05-18)
 
 Additional implemented features beyond this base PRD:
 
