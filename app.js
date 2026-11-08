@@ -1,45 +1,74 @@
 "use strict";
 
 (() => {
-  const SHEET_IN = { width: 11, height: 8.5 };
-  const GRID = { cols: 4, rows: 2 };
-  const PANEL_IN = {
-    width: SHEET_IN.width / GRID.cols,
-    height: SHEET_IN.height / GRID.rows
-  };
-
   const PREVIEW_PPI = 100;
   const PRESET_MARGINS = [0, 0.0625, 0.125, 0.1875, 0.25];
-  const SLOT_ORDER = ["front", "page_1", "page_2", "page_3", "page_4", "page_5", "page_6", "back"];
-  const STANDARD_AUTO_ASSIGN_ORDER = SLOT_ORDER;
   const ALT_COVER_AUTO_ASSIGN_ORDER = ["page_2", "page_3", "page_4", "page_5", "page_6", "back", "front", "page_1"];
-  const SLOT_LABELS = {
-    front: "Front Cover",
-    page_1: "Page 1",
-    page_2: "Page 2",
-    page_3: "Page 3",
-    page_4: "Page 4",
-    page_5: "Page 5",
-    page_6: "Page 6",
-    back: "Back Cover"
+
+  // Central imposition maps, easy to edit if layout rules change later.
+  // 8-page mini-zine: 4 x 2 on landscape Letter, one center cut.
+  const ZINE_LAYOUT = {
+    id: "zine",
+    isCard: false,
+    sheet: { width: 11, height: 8.5 },
+    grid: { cols: 4, rows: 2 },
+    slots: ["front", "page_1", "page_2", "page_3", "page_4", "page_5", "page_6", "back"],
+    labels: {
+      front: "Front Cover",
+      page_1: "Page 1",
+      page_2: "Page 2",
+      page_3: "Page 3",
+      page_4: "Page 4",
+      page_5: "Page 5",
+      page_6: "Page 6",
+      back: "Back Cover"
+    },
+    imposition: [
+      { slot: "page_4", row: 0, col: 0, rotation: 180 },
+      { slot: "page_3", row: 0, col: 1, rotation: 180 },
+      { slot: "page_2", row: 0, col: 2, rotation: 180 },
+      { slot: "page_1", row: 0, col: 3, rotation: 180 },
+      { slot: "page_5", row: 1, col: 0, rotation: 0 },
+      { slot: "page_6", row: 1, col: 1, rotation: 0 },
+      { slot: "back", row: 1, col: 2, rotation: 0 },
+      { slot: "front", row: 1, col: 3, rotation: 0 }
+    ],
+    cutGuide: { y: 4.25, x1: 2.75, x2: 8.25 }
   };
 
-  // Central imposition map, easy to edit if layout rules change later.
-  const IMPOSITION_LAYOUT = [
-    { slot: "page_4", row: 0, col: 0, rotation: 180 },
-    { slot: "page_3", row: 0, col: 1, rotation: 180 },
-    { slot: "page_2", row: 0, col: 2, rotation: 180 },
-    { slot: "page_1", row: 0, col: 3, rotation: 180 },
-    { slot: "page_5", row: 1, col: 0, rotation: 0 },
-    { slot: "page_6", row: 1, col: 1, rotation: 0 },
-    { slot: "back", row: 1, col: 2, rotation: 0 },
-    { slot: "front", row: 1, col: 3, rotation: 0 }
-  ];
+  // French fold card: 2 x 2, printed on one side, folded in half twice, no cutting.
+  // Side hinge (opens like a book): fold top half back, then left half back.
+  // Top hinge (flips up): fold right half back, then top half back.
+  const CARD_IMPOSITIONS = {
+    side: {
+      slots: ["front", "inside_left", "inside_right", "back"],
+      labels: { front: "Front", inside_left: "Inside Left", inside_right: "Inside Right", back: "Back" },
+      imposition: [
+        { slot: "inside_right", row: 0, col: 0, rotation: 180 },
+        { slot: "inside_left", row: 0, col: 1, rotation: 180 },
+        { slot: "back", row: 1, col: 0, rotation: 0 },
+        { slot: "front", row: 1, col: 1, rotation: 0 }
+      ]
+    },
+    top: {
+      slots: ["front", "inside_top", "inside_bottom", "back"],
+      labels: { front: "Front", inside_top: "Inside Top", inside_bottom: "Inside Bottom", back: "Back" },
+      imposition: [
+        { slot: "back", row: 0, col: 0, rotation: 180 },
+        { slot: "inside_bottom", row: 0, col: 1, rotation: 180 },
+        { slot: "front", row: 1, col: 0, rotation: 0 },
+        { slot: "inside_top", row: 1, col: 1, rotation: 180 }
+      ]
+    }
+  };
 
   const state = {
+    format: "zine",
+    cardOrientation: "portrait",
+    cardHinge: "side",
     images: [],
     imageById: new Map(),
-    assignment: createEmptyAssignment(),
+    assignment: {},
     marginIn: 0.125,
     useGutterLayout: false,
     printerMarginIn: 0.25,
@@ -52,6 +81,9 @@
     pageNumberStyle: "number",
     useAltCoverPlacement: false,
     exportDpi: 300,
+    // Slot waiting for the per-panel file picker to return.
+    pendingSlot: null,
+    clickSlot: null,
     // Drag state is purely UI/preview interaction state (no export impact).
     dragState: {
       active: false,
@@ -61,7 +93,25 @@
   };
 
   const ui = {
+    formatSelect: document.getElementById("formatSelect"),
+    cardOptions: document.getElementById("cardOptions"),
+    cardOrientation: document.getElementById("cardOrientation"),
+    cardHinge: document.getElementById("cardHinge"),
+    previewTitle: document.getElementById("previewTitle"),
+    zineFoldGuide: document.getElementById("zineFoldGuide"),
+    cardFoldGuide: document.getElementById("cardFoldGuide"),
+    cardFoldSteps: document.getElementById("cardFoldSteps"),
+    printingNotes: document.getElementById("printingNotes"),
+    pageNotes: document.getElementById("pageNotes"),
+    altCoverRow: document.getElementById("altCoverRow"),
     imagePicker: document.getElementById("imagePicker"),
+    slotPicker: document.getElementById("slotPicker"),
+    loadHeading: document.getElementById("loadHeading"),
+    cardLoadHint: document.getElementById("cardLoadHint"),
+    folderRow: document.getElementById("folderRow"),
+    assignHeading: document.getElementById("assignHeading"),
+    assignHint: document.getElementById("assignHint"),
+    cardFlipNote: document.getElementById("cardFlipNote"),
     autoAssignBtn: document.getElementById("autoAssignBtn"),
     clearBtn: document.getElementById("clearBtn"),
     loadStatus: document.getElementById("loadStatus"),
@@ -90,19 +140,176 @@
   init();
 
   function init() {
+    state.assignment = createEmptyAssignment();
     bindEvents();
     syncGutterControlsEnabled();
     syncAssignmentModeHelp();
+    syncFormatUi();
     renderAssignmentList();
     renderCatalog();
     renderPreview();
   }
 
+  function getLayout() {
+    if (state.format !== "card") {
+      return ZINE_LAYOUT;
+    }
+    const sheet =
+      state.cardOrientation === "landscape" ? { width: 11, height: 8.5 } : { width: 8.5, height: 11 };
+    const card = CARD_IMPOSITIONS[state.cardHinge] || CARD_IMPOSITIONS.side;
+    return {
+      id: "card",
+      isCard: true,
+      sheet,
+      grid: { cols: 2, rows: 2 },
+      slots: card.slots,
+      labels: card.labels,
+      imposition: card.imposition,
+      cutGuide: null
+    };
+  }
+
+  function getPanelSizeIn(layout = getLayout()) {
+    return {
+      width: layout.sheet.width / layout.grid.cols,
+      height: layout.sheet.height / layout.grid.rows
+    };
+  }
+
+  function onFormatChanged() {
+    state.marginIn = sanitizeMargin(state.marginIn);
+    ui.marginInput.value = formatNumber(state.marginIn, 4);
+    syncMarginPreset();
+    cancelDrag();
+    syncFormatUi();
+    autoAssign();
+    renderAssignmentList();
+    renderPreview();
+    setExportStatus("");
+  }
+
+  // Swap the format-specific help text and controls.
+  function syncFormatUi() {
+    const layout = getLayout();
+    const panel = getPanelSizeIn(layout);
+    const isCard = layout.isCard;
+    const sheetOrientation = layout.sheet.width > layout.sheet.height ? "landscape" : "portrait";
+    const px = (inches) => Math.round(inches * 300);
+
+    ui.formatSelect.value = state.format;
+    ui.cardOrientation.value = state.cardOrientation;
+    ui.cardHinge.value = state.cardHinge;
+    ui.cardOptions.hidden = !isCard;
+    ui.altCoverRow.hidden = isCard;
+    // Cards are built panel by panel; the folder/auto-fill tools are zine-only.
+    ui.cardLoadHint.hidden = !isCard;
+    ui.folderRow.hidden = isCard;
+    ui.autoAssignBtn.hidden = isCard;
+    ui.assignHint.hidden = isCard;
+    ui.cardFlipNote.hidden = !isCard;
+    ui.loadHeading.textContent = isCard ? "2) Add Photos" : "2) Load Images";
+    ui.assignHeading.textContent = isCard ? "3) Panels" : "3) Assign Images";
+    ui.zineFoldGuide.hidden = isCard;
+    ui.cardFoldGuide.hidden = !isCard;
+    ui.previewCanvas.classList.toggle("is-portrait", sheetOrientation === "portrait");
+
+    ui.showCutGuide.disabled = isCard;
+    ui.showPageNumbers.disabled = isCard;
+    ui.pageNumberStyle.disabled = isCard || !state.showPageNumbers;
+
+    ui.previewTitle.textContent = `Preview (${formatNumber(layout.sheet.width, 2)} x ${formatNumber(
+      layout.sheet.height,
+      2
+    )} in ${sheetOrientation})`;
+
+    const printing = [
+      `Print in ${sheetOrientation} orientation.`,
+      "Print at 100% / Actual Size.",
+      'Do not use "Fit to page" if it changes scale.'
+    ];
+    printing.push(
+      isCard
+        ? "Print on one side only. No cutting: just two folds."
+        : "Fold on guide lines, cut the center slit, then fold into the mini-zine."
+    );
+    setListItems(ui.printingNotes, printing);
+
+    const panelSize = `${formatNumber(panel.width, 3)} in x ${formatNumber(panel.height, 3)} in`;
+    const pagePixels = `${px(panel.width)} x ${px(panel.height)} px at 300 DPI`;
+    const panelOrientation = panel.width > panel.height ? "landscape" : "portrait";
+    const notes = [`Actual ${isCard ? "card panel" : "page image"} size is ${panelSize}.`, `That equals ${pagePixels}.`];
+    if (!isCard) {
+      notes.push("4 x 6 photo source images also work nicely.");
+    }
+    notes.push(`Use ${panelOrientation}-oriented source images for best fit.`);
+    notes.push("Contain mode keeps the full image visible without cropping.");
+    setListItems(ui.pageNotes, notes);
+
+    const steps =
+      state.cardHinge === "top"
+        ? [
+            "Print on one side of the sheet only.",
+            "Fold in half left-to-right, printed side out (right half goes behind).",
+            "Fold in half again, top half behind, so Front is on the outside.",
+            "The fold is now at the top: the card flips up to open."
+          ]
+        : [
+            "Print on one side of the sheet only.",
+            "Fold in half top-to-bottom, printed side out (top half goes behind).",
+            "Fold in half again, left half behind, so Front is on the outside.",
+            "The fold is now on the left: the card opens like a book."
+          ];
+    setListItems(ui.cardFoldSteps, steps);
+  }
+
+  function setListItems(listEl, items) {
+    listEl.innerHTML = "";
+    for (const text of items) {
+      const li = document.createElement("li");
+      li.textContent = text;
+      listEl.appendChild(li);
+    }
+  }
+
+  function getRenderOptions(ppi, includeDrag = false) {
+    return {
+      ppi,
+      marginIn: state.marginIn,
+      useGutterLayout: state.useGutterLayout,
+      printerMarginIn: state.printerMarginIn,
+      innerGutterIn: state.innerGutterIn,
+      scaleMode: state.scaleMode,
+      showFoldGuides: state.showFoldGuides,
+      showCutGuide: state.showCutGuide,
+      showLabels: state.showLabels,
+      showPageNumbers: state.showPageNumbers,
+      pageNumberStyle: state.pageNumberStyle,
+      useAltCoverPlacement: isAltCoverActive(),
+      dragState: includeDrag ? state.dragState : null,
+      isPreview: includeDrag
+    };
+  }
+
   function bindEvents() {
-    ui.imagePicker.addEventListener("change", async (event) => {
-      const files = Array.from(event.target.files || []);
-      await loadFiles(files);
+    ui.formatSelect.addEventListener("change", () => {
+      state.format = ui.formatSelect.value === "card" ? "card" : "zine";
+      onFormatChanged();
     });
+
+    ui.cardOrientation.addEventListener("change", () => {
+      state.cardOrientation = ui.cardOrientation.value === "landscape" ? "landscape" : "portrait";
+      onFormatChanged();
+    });
+
+    ui.cardHinge.addEventListener("change", () => {
+      state.cardHinge = ui.cardHinge.value === "top" ? "top" : "side";
+      onFormatChanged();
+    });
+
+    ui.imagePicker.addEventListener("change", async (event) => {
+      await loadFiles(Array.from(event.target.files || []));
+    });
+
 
     ui.autoAssignBtn.addEventListener("click", () => {
       autoAssign();
@@ -232,6 +439,24 @@
       openPrintView();
     });
 
+    ui.slotPicker.addEventListener("change", async () => {
+      const file = ui.slotPicker.files && ui.slotPicker.files[0];
+      const slot = state.pendingSlot;
+      state.pendingSlot = null;
+      ui.slotPicker.value = "";
+      if (file && slot) {
+        await loadImageIntoSlot(file, slot);
+      }
+    });
+
+    ui.previewCanvas.addEventListener("click", () => {
+      const slot = state.clickSlot;
+      state.clickSlot = null;
+      if (slot) {
+        openSlotPicker(slot);
+      }
+    });
+
     ui.previewCanvas.addEventListener("pointerdown", onPreviewPointerDown);
     ui.previewCanvas.addEventListener("pointermove", onPreviewPointerMove);
     ui.previewCanvas.addEventListener("pointerup", onPreviewPointerUp);
@@ -327,11 +552,36 @@
     return file.webkitRelativePath || file.name;
   }
 
-  async function loadImageAsset(file, index) {
+  function openSlotPicker(slot) {
+    state.pendingSlot = slot;
+    ui.slotPicker.click();
+  }
+
+  // Add one image to the loaded list and put it in a specific slot.
+  async function loadImageIntoSlot(file, slot) {
+    if (!isSupportedImageFile(file)) {
+      setLoadStatus(`${file.name} isn't a PNG, JPG or WebP. (iPhone HEIC photos need converting to JPG first.)`);
+      return;
+    }
+    let asset;
+    try {
+      asset = await loadImageAsset(file, state.images.length, `slot-${Date.now()}`);
+    } catch {
+      setLoadStatus(`Could not read ${file.name}.`);
+      return;
+    }
+    state.images.push(asset);
+    state.imageById.set(asset.id, asset);
+    assignImageToSlot(slot, asset.id);
+    renderCatalog();
+    setLoadStatus(`Added ${file.name} to ${getLayout().labels[slot]}.`);
+  }
+
+  async function loadImageAsset(file, index, idPrefix = String(index)) {
     const url = URL.createObjectURL(file);
     const img = await loadImageElement(url);
     return {
-      id: `${index}-${file.name}-${file.size}-${file.lastModified}`,
+      id: `${idPrefix}-${file.name}-${file.size}-${file.lastModified}`,
       file,
       url,
       img,
@@ -362,7 +612,7 @@
 
   function createEmptyAssignment() {
     const empty = {};
-    for (const slot of SLOT_ORDER) {
+    for (const slot of getLayout().slots) {
       empty[slot] = "";
     }
     return empty;
@@ -373,7 +623,7 @@
     const usedIds = new Set();
     const slotOrder = getAutoAssignOrder();
 
-    if (!state.useAltCoverPlacement) {
+    if (!isAltCoverActive()) {
       // First pass: try to honor semantic filename matches (front, back, page_1, etc.).
       for (const slot of slotOrder) {
         const matched = state.images.find((asset) => {
@@ -400,12 +650,17 @@
     state.assignment = assignment;
   }
 
+  // Alternate cover placement only applies to the 8-page zine.
+  function isAltCoverActive() {
+    return state.useAltCoverPlacement && !getLayout().isCard;
+  }
+
   function getAutoAssignOrder() {
-    return state.useAltCoverPlacement ? ALT_COVER_AUTO_ASSIGN_ORDER : STANDARD_AUTO_ASSIGN_ORDER;
+    return isAltCoverActive() ? ALT_COVER_AUTO_ASSIGN_ORDER : getLayout().slots;
   }
 
   function getAutoAssignStatusMessage() {
-    if (state.useAltCoverPlacement) {
+    if (isAltCoverActive()) {
       return "Auto-assigned with alternate cover placement: image 7 is Front Cover and image 6 is Back Cover.";
     }
     return "Auto-assigned images alphabetically (with filename slot matching when possible).";
@@ -452,12 +707,12 @@
     const fragment = document.createDocumentFragment();
     ui.assignmentList.innerHTML = "";
 
-    for (const slot of SLOT_ORDER) {
+    for (const slot of getLayout().slots) {
       const row = document.createElement("div");
       row.className = "assignment-row";
 
       const label = document.createElement("label");
-      label.textContent = SLOT_LABELS[slot];
+      label.textContent = getLayout().labels[slot];
       label.htmlFor = `assign-${slot}`;
 
       const select = document.createElement("select");
@@ -481,7 +736,23 @@
         assignImageToSlot(slot, select.value);
       });
 
-      row.append(label, select);
+      const chooseBtn = document.createElement("button");
+      chooseBtn.type = "button";
+      chooseBtn.className = "secondary slot-choose";
+      chooseBtn.textContent = state.assignment[slot] ? "Replace" : "Choose";
+      chooseBtn.setAttribute("aria-label", `Choose image file for ${getLayout().labels[slot]}`);
+      chooseBtn.addEventListener("click", () => openSlotPicker(slot));
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "secondary slot-remove";
+      removeBtn.textContent = "×";
+      removeBtn.title = "Empty this panel";
+      removeBtn.setAttribute("aria-label", `Remove image from ${getLayout().labels[slot]}`);
+      removeBtn.disabled = !state.assignment[slot];
+      removeBtn.addEventListener("click", () => assignImageToSlot(slot, ""));
+
+      row.append(label, select, chooseBtn, removeBtn);
       fragment.appendChild(row);
     }
 
@@ -493,7 +764,7 @@
       return;
     }
 
-    for (const otherSlot of SLOT_ORDER) {
+    for (const otherSlot of getLayout().slots) {
       if (otherSlot !== slot && state.assignment[otherSlot] === imageId) {
         state.assignment[otherSlot] = "";
       }
@@ -523,27 +794,13 @@
   }
 
   function renderPreview() {
-    renderSheet(ui.previewCanvas, {
-      ppi: PREVIEW_PPI,
-      marginIn: state.marginIn,
-      useGutterLayout: state.useGutterLayout,
-      printerMarginIn: state.printerMarginIn,
-      innerGutterIn: state.innerGutterIn,
-      scaleMode: state.scaleMode,
-      showFoldGuides: state.showFoldGuides,
-      showCutGuide: state.showCutGuide,
-      showLabels: state.showLabels,
-      showPageNumbers: state.showPageNumbers,
-      pageNumberStyle: state.pageNumberStyle,
-      useAltCoverPlacement: state.useAltCoverPlacement,
-      dragState: state.dragState
-    });
+    renderSheet(ui.previewCanvas, getRenderOptions(PREVIEW_PPI, true));
   }
 
   function renderSheet(canvas, options) {
     const ppi = options.ppi;
-    const pageWidthPx = Math.round(SHEET_IN.width * ppi);
-    const pageHeightPx = Math.round(SHEET_IN.height * ppi);
+    const pageWidthPx = Math.round(getLayout().sheet.width * ppi);
+    const pageHeightPx = Math.round(getLayout().sheet.height * ppi);
 
     if (canvas.width !== pageWidthPx || canvas.height !== pageHeightPx) {
       canvas.width = pageWidthPx;
@@ -555,7 +812,7 @@
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, pageWidthPx, pageHeightPx);
 
-    for (const panel of IMPOSITION_LAYOUT) {
+    for (const panel of getLayout().imposition) {
       drawPanelContent(ctx, panel, options);
     }
 
@@ -564,12 +821,12 @@
       drawFoldGuides(ctx, ppi);
     }
 
-    if (options.showCutGuide) {
+    if (options.showCutGuide && getLayout().cutGuide) {
       drawCutGuide(ctx, ppi);
     }
 
     if (options.showLabels) {
-      for (const panel of IMPOSITION_LAYOUT) {
+      for (const panel of getLayout().imposition) {
         drawPanelLabel(ctx, panel, ppi);
       }
     }
@@ -600,7 +857,9 @@
     if (asset && contentRect.w > 0 && contentRect.h > 0) {
       drawImageFitted(panelCtx, asset.img, contentRect, options.scaleMode);
     } else {
-      drawPlaceholder(panelCtx, contentRect);
+      if (options.isPreview) {
+        drawPlaceholder(panelCtx, contentRect);
+      }
     }
 
     if (options.showPageNumbers) {
@@ -640,9 +899,9 @@
     // - only expands inner gutter on outer columns so middle pages are not over-shrunk
     const outerInsetPx = Math.max(0, baseMarginPx - printerMarginPx);
     const isLeftEdge = panel.col === 0;
-    const isRightEdge = panel.col === GRID.cols - 1;
+    const isRightEdge = panel.col === getLayout().grid.cols - 1;
     const isTopEdge = panel.row === 0;
-    const isBottomEdge = panel.row === GRID.rows - 1;
+    const isBottomEdge = panel.row === getLayout().grid.rows - 1;
 
     // Insets desired on the final sheet orientation.
     // Horizontal:
@@ -716,7 +975,8 @@
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "14px sans-serif";
-    ctx.fillText("No image", bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
+    ctx.font = "16px sans-serif";
+    ctx.fillText("Click to add image", bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
     ctx.restore();
   }
 
@@ -781,12 +1041,12 @@
     ctx.save();
     ctx.strokeStyle = "#5f6d7f";
     ctx.lineWidth = Math.max(1, ppi / 180);
-    for (let row = 0; row < GRID.rows; row += 1) {
-      for (let col = 0; col < GRID.cols; col += 1) {
-        const x = col * PANEL_IN.width * ppi;
-        const y = row * PANEL_IN.height * ppi;
-        const w = PANEL_IN.width * ppi;
-        const h = PANEL_IN.height * ppi;
+    for (let row = 0; row < getLayout().grid.rows; row += 1) {
+      for (let col = 0; col < getLayout().grid.cols; col += 1) {
+        const x = col * getPanelSizeIn().width * ppi;
+        const y = row * getPanelSizeIn().height * ppi;
+        const w = getPanelSizeIn().width * ppi;
+        const h = getPanelSizeIn().height * ppi;
         ctx.strokeRect(x, y, w, h);
       }
     }
@@ -799,20 +1059,24 @@
     ctx.lineWidth = Math.max(1, ppi / 230);
     ctx.setLineDash([6, 6]);
 
-    const foldX = [2.75, 5.5, 8.25];
-    for (const xIn of foldX) {
-      const x = xIn * ppi;
+    const layout = getLayout();
+    const panel = getPanelSizeIn(layout);
+    const sheetW = layout.sheet.width * ppi;
+    const sheetH = layout.sheet.height * ppi;
+    for (let col = 1; col < layout.grid.cols; col += 1) {
+      const x = col * panel.width * ppi;
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x, SHEET_IN.height * ppi);
+      ctx.lineTo(x, sheetH);
       ctx.stroke();
     }
-
-    const y = 4.25 * ppi;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(SHEET_IN.width * ppi, y);
-    ctx.stroke();
+    for (let row = 1; row < layout.grid.rows; row += 1) {
+      const y = row * panel.height * ppi;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(sheetW, y);
+      ctx.stroke();
+    }
 
     ctx.restore();
   }
@@ -823,9 +1087,10 @@
     ctx.lineWidth = Math.max(1.3, ppi / 160);
     ctx.setLineDash([]);
 
-    const y = 4.25 * ppi;
-    const x1 = 2.75 * ppi;
-    const x2 = 8.25 * ppi;
+    const cut = getLayout().cutGuide;
+    const y = cut.y * ppi;
+    const x1 = cut.x1 * ppi;
+    const x2 = cut.x2 * ppi;
     ctx.beginPath();
     ctx.moveTo(x1, y);
     ctx.lineTo(x2, y);
@@ -861,13 +1126,13 @@
 
   function getPanelLabel(panel) {
     const rotationLabel = panel.rotation ? " (180°)" : "";
-    if (!state.useAltCoverPlacement) {
-      return `${SLOT_LABELS[panel.slot]}${rotationLabel}`;
+    if (!isAltCoverActive()) {
+      return `${getLayout().labels[panel.slot]}${rotationLabel}`;
     }
 
     const imageOrder = getAssignedImageOrder(panel.slot);
     const imageLabel = imageOrder == null ? "No image" : `Image ${imageOrder}`;
-    return `${imageLabel} / ${SLOT_LABELS[panel.slot]}${rotationLabel}`;
+    return `${imageLabel} / ${getLayout().labels[panel.slot]}${rotationLabel}`;
   }
 
   function drawDragOverlay(ctx, dragState, ppi) {
@@ -899,15 +1164,15 @@
 
   function getPanelRectPx(panel, ppi) {
     return {
-      x: panel.col * PANEL_IN.width * ppi,
-      y: panel.row * PANEL_IN.height * ppi,
-      w: PANEL_IN.width * ppi,
-      h: PANEL_IN.height * ppi
+      x: panel.col * getPanelSizeIn().width * ppi,
+      y: panel.row * getPanelSizeIn().height * ppi,
+      w: getPanelSizeIn().width * ppi,
+      h: getPanelSizeIn().height * ppi
     };
   }
 
   function getPanelBySlot(slot) {
-    return IMPOSITION_LAYOUT.find((panel) => panel.slot === slot) || null;
+    return getLayout().imposition.find((panel) => panel.slot === slot) || null;
   }
 
   function getPanelAtCanvasPoint(canvasX, canvasY, canvas) {
@@ -915,9 +1180,9 @@
       return null;
     }
     // Hit-test via logical grid math so it remains stable if preview CSS scales the canvas.
-    const col = Math.floor((canvasX / canvas.width) * GRID.cols);
-    const row = Math.floor((canvasY / canvas.height) * GRID.rows);
-    return IMPOSITION_LAYOUT.find((panel) => panel.row === row && panel.col === col) || null;
+    const col = Math.floor((canvasX / canvas.width) * getLayout().grid.cols);
+    const row = Math.floor((canvasY / canvas.height) * getLayout().grid.rows);
+    return getLayout().imposition.find((panel) => panel.row === row && panel.col === col) || null;
   }
 
   function getCanvasPointFromPointerEvent(event, canvas) {
@@ -973,9 +1238,12 @@
     const sourceSlot = state.dragState.sourceSlot;
     const targetSlot = state.dragState.targetSlot;
 
-    // Swap assignments only when dropped on a different panel.
+    // Drop on a different panel swaps; a plain click (same panel) picks a file
+    // for that panel in the click handler, which browsers trust for file dialogs.
     if (sourceSlot && targetSlot && sourceSlot !== targetSlot) {
       swapAssignments(sourceSlot, targetSlot);
+    } else if (sourceSlot && sourceSlot === targetSlot) {
+      state.clickSlot = sourceSlot;
     }
 
     if (ui.previewCanvas.hasPointerCapture(event.pointerId)) {
@@ -1016,7 +1284,8 @@
   }
 
   function sanitizeMargin(value) {
-    const maxMargin = Math.min(PANEL_IN.width, PANEL_IN.height) / 2 - 0.001;
+    const panel = getPanelSizeIn();
+    const maxMargin = Math.min(panel.width, panel.height) / 2 - 0.001;
     return clamp(value, 0, maxMargin);
   }
 
@@ -1052,20 +1321,7 @@
     ui.exportDpi.value = String(dpi);
 
     const canvas = document.createElement("canvas");
-    renderSheet(canvas, {
-      ppi: dpi,
-      marginIn: state.marginIn,
-      useGutterLayout: state.useGutterLayout,
-      printerMarginIn: state.printerMarginIn,
-      innerGutterIn: state.innerGutterIn,
-      scaleMode: state.scaleMode,
-      showFoldGuides: state.showFoldGuides,
-      showCutGuide: state.showCutGuide,
-      showLabels: state.showLabels,
-      showPageNumbers: state.showPageNumbers,
-      pageNumberStyle: state.pageNumberStyle,
-      useAltCoverPlacement: state.useAltCoverPlacement
-    });
+    renderSheet(canvas, getRenderOptions(dpi));
 
     canvas.toBlob((blob) => {
       if (!blob) {
@@ -1073,7 +1329,10 @@
         return;
       }
 
-      const fileName = `mini-zine-imposition-${dpi}dpi.png`;
+      const layout = getLayout();
+      const fileName = layout.isCard
+        ? `french-fold-card-${state.cardOrientation}-${state.cardHinge}-fold-${dpi}dpi.png`
+        : `mini-zine-imposition-${dpi}dpi.png`;
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -1082,7 +1341,7 @@
       setTimeout(() => URL.revokeObjectURL(url), 1200);
 
       setExportStatus(
-        `Exported ${fileName} (${Math.round(SHEET_IN.width * dpi)} x ${Math.round(SHEET_IN.height * dpi)} px).`
+        `Exported ${fileName} (${Math.round(layout.sheet.width * dpi)} x ${Math.round(layout.sheet.height * dpi)} px).`
       );
     }, "image/png");
   }
@@ -1090,23 +1349,16 @@
   function openPrintView() {
     const dpi = getExportDpi();
     const canvas = document.createElement("canvas");
-    renderSheet(canvas, {
-      ppi: dpi,
-      marginIn: state.marginIn,
-      useGutterLayout: state.useGutterLayout,
-      printerMarginIn: state.printerMarginIn,
-      innerGutterIn: state.innerGutterIn,
-      scaleMode: state.scaleMode,
-      showFoldGuides: state.showFoldGuides,
-      showCutGuide: state.showCutGuide,
-      showLabels: state.showLabels,
-      showPageNumbers: state.showPageNumbers,
-      pageNumberStyle: state.pageNumberStyle,
-      useAltCoverPlacement: state.useAltCoverPlacement
-    });
+    renderSheet(canvas, getRenderOptions(dpi));
+    const layout = getLayout();
+    const sheetW = `${layout.sheet.width}in`;
+    const sheetH = `${layout.sheet.height}in`;
+    const orientation = layout.sheet.width > layout.sheet.height ? "landscape" : "portrait";
+    const docTitle = layout.isCard ? "Print French Fold Card" : "Print Mini-Zine Sheet";
 
     const dataUrl = canvas.toDataURL("image/png");
-    const win = window.open("", "_blank", "noopener,noreferrer");
+    // No "noopener" here: with it, browsers return null and leave the new tab blank.
+    const win = window.open("", "_blank");
     if (!win) {
       setExportStatus("Popup blocked. Allow popups to open print view.");
       return;
@@ -1116,12 +1368,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Print Mini-Zine Sheet</title>
+  <title>${docTitle}</title>
   <style>
-    @page { size: 11in 8.5in; margin: 0; }
+    @page { size: ${sheetW} ${sheetH}; margin: 0; }
     html, body { margin: 0; padding: 0; background: #f3f5f8; font-family: sans-serif; }
     .wrap { min-height: 100vh; display: grid; place-items: center; }
-    img { width: 11in; height: 8.5in; display: block; box-shadow: 0 6px 24px rgba(0,0,0,0.16); background: #fff; }
+    img { width: ${sheetW}; height: ${sheetH}; display: block; box-shadow: 0 6px 24px rgba(0,0,0,0.16); background: #fff; }
     .help { margin: 1rem 0; color: #334155; font-size: 14px; text-align: center; }
     @media print {
       body { background: #fff; }
@@ -1133,8 +1385,8 @@
 </head>
 <body>
   <div class="wrap">
-    <img alt="Mini-zine imposed sheet" src="${dataUrl}" />
-    <p class="help">Print landscape at 100% / Actual Size. Use browser print (Ctrl/Cmd+P).</p>
+    <img alt="${layout.isCard ? "French fold card sheet" : "Mini-zine imposed sheet"}" src="${dataUrl}" />
+    <p class="help">Print ${orientation} at 100% / Actual Size. Use browser print (Ctrl/Cmd+P).</p>
   </div>
 </body>
 </html>`);

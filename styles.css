@@ -167,12 +167,13 @@ button.secondary:hover {
 
 .assignment-row {
   display: grid;
-  grid-template-columns: 78px 1fr;
-  gap: 0.55rem;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.2rem 0.4rem;
   align-items: center;
 }
 
 .assignment-row label {
+  grid-column: 1 / -1;
   font-size: 0.85rem;
   color: var(--muted);
 }
@@ -225,7 +226,7 @@ button.secondary:hover {
   max-width: 100%;
   display: block;
   background: #fff;
-  cursor: grab;
+  cursor: pointer;
   touch-action: none;
 }
 
@@ -292,4 +293,30 @@ button.secondary:hover {
   .image-catalog {
     max-height: 140px;
   }
+}
+
+/* Portrait sheets (French fold portrait card) shouldn't fill the whole column height. */
+#previewCanvas.is-portrait {
+  width: auto;
+  max-height: 80vh;
+  margin: 0 auto;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.assignment-row select {
+  min-width: 0;
+}
+
+.slot-choose {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.slot-remove {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.9rem;
+  line-height: 1;
 }

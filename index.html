@@ -4,21 +4,49 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mini-Zine Imposition Tool</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=2026-11-08" />
   </head>
   <body>
     <header class="site-header">
       <h1>Mini-Zine Imposition Tool</h1>
       <p>
-        Build a printable one-sheet 8-page zine from local images. Everything runs locally in your browser.
+        Build a printable one-sheet 8-page zine or French fold card from local images. Everything runs locally in your browser.
       </p>
     </header>
 
     <main class="layout">
       <section class="panel controls-panel">
-        <h2>1) Load Images</h2>
+        <h2>1) Choose Format</h2>
         <div class="control-row">
-          <label for="imagePicker" class="control-label">Folder or Files</label>
+          <label for="formatSelect" class="control-label">Format</label>
+          <select id="formatSelect">
+            <option value="zine" selected>8-page mini-zine (one cut)</option>
+            <option value="card">French fold card (4 panels, no cutting)</option>
+          </select>
+        </div>
+        <div id="cardOptions" class="card-options" hidden>
+          <div class="control-row">
+            <label for="cardOrientation" class="control-label">Card orientation</label>
+            <select id="cardOrientation">
+              <option value="portrait" selected>Portrait (4.25 x 5.5 in)</option>
+              <option value="landscape">Landscape (5.5 x 4.25 in)</option>
+            </select>
+          </div>
+          <div class="control-row">
+            <label for="cardHinge" class="control-label">Fold</label>
+            <select id="cardHinge">
+              <option value="side" selected>Side fold (opens like a book)</option>
+              <option value="top">Top fold (flips up)</option>
+            </select>
+          </div>
+        </div>
+
+        <h2 id="loadHeading">2) Load Images</h2>
+        <p id="cardLoadHint" class="hint" hidden>
+          Click a panel in the preview, or a Choose button below, to add a photo to that spot.
+        </p>
+        <div id="folderRow" class="control-row">
+          <label for="imagePicker" class="control-label">Pick a folder</label>
           <input
             id="imagePicker"
             type="file"
@@ -30,21 +58,23 @@
         </div>
         <div class="control-row compact-row">
           <button id="autoAssignBtn" type="button">Auto-assign</button>
-          <button id="clearBtn" type="button" class="secondary">Clear</button>
+          <button id="clearBtn" type="button" class="secondary">Start over</button>
         </div>
         <p id="loadStatus" class="status">No images loaded.</p>
 
-        <h2>2) Assign Images</h2>
-        <p class="hint">
+        <h2 id="assignHeading">3) Assign Images</h2>
+        <p id="assignHint" class="hint">
           Default order is alphabetical. You can reassign any slot below.
         </p>
-        <label class="mode-toggle">
-          <input id="useAltCoverPlacement" type="checkbox" />
-          Use alternate cover placement
-        </label>
-        <p id="assignmentModeHelp" class="hint">
-          Standard: image 1 is Front Cover, image 8 is Back Cover.
-        </p>
+        <div id="altCoverRow">
+          <label class="mode-toggle">
+            <input id="useAltCoverPlacement" type="checkbox" />
+            Use alternate cover placement
+          </label>
+          <p id="assignmentModeHelp" class="hint">
+            Standard: image 1 is Front Cover, image 8 is Back Cover.
+          </p>
+        </div>
         <div id="assignmentList" class="assignment-list"></div>
 
         <h3>Loaded Images</h3>
@@ -52,19 +82,27 @@
       </section>
 
       <section class="panel preview-panel">
-        <h2>Preview (11 x 8.5 in landscape)</h2>
-        <p class="hint">Tip: Drag one panel and drop on another panel to swap assignments.</p>
+        <h2 id="previewTitle">Preview (11 x 8.5 in landscape)</h2>
+        <p class="hint">Click a panel to choose its image. Drag one panel onto another to swap them.</p>
+        <p id="cardFlipNote" class="hint" hidden>
+          Some panels look upside-down on purpose. They'll be the right way up once folded.
+        </p>
+        <input id="slotPicker" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" hidden />
         <div class="preview-wrap">
           <canvas id="previewCanvas" aria-label="Zine sheet preview"></canvas>
         </div>
-        <div class="fold-guide-wrap">
+        <div id="zineFoldGuide" class="fold-guide-wrap">
           <h3>How To Fold</h3>
           <img src="how_to_fold.jpg" alt="How to fold mini-zine reference" class="fold-guide-image" />
+        </div>
+        <div id="cardFoldGuide" class="fold-guide-wrap" hidden>
+          <h3>How To Fold</h3>
+          <ol id="cardFoldSteps" class="instructions"></ol>
         </div>
       </section>
 
       <section class="panel options-panel">
-        <h2>3) Options</h2>
+        <h2>4) Options</h2>
         <div class="control-grid">
           <label for="marginPreset">Margin preset (in)</label>
           <select id="marginPreset">
@@ -111,7 +149,7 @@
           <label><input id="showPageNumbers" type="checkbox" /> Show page numbers</label>
         </fieldset>
 
-        <h2>4) Export</h2>
+        <h2>5) Export</h2>
         <div class="control-row compact-row">
           <button id="exportPngBtn" type="button">Export PNG</button>
           <button id="printViewBtn" type="button" class="secondary">Open Print View</button>
@@ -119,7 +157,7 @@
         <p id="exportStatus" class="status"></p>
 
         <h3>Printing Notes</h3>
-        <ul class="instructions">
+        <ul id="printingNotes" class="instructions">
           <li>Print in landscape orientation.</li>
           <li>Print at 100% / Actual Size.</li>
           <li>Do not use "Fit to page" if it changes scale.</li>
@@ -127,7 +165,7 @@
         </ul>
 
         <h3>Page (Image Notes)</h3>
-        <ul class="instructions">
+        <ul id="pageNotes" class="instructions">
           <li>Actual page image size is 2.75 in x 4.25 in.</li>
           <li>That equals 825 x 1275 px at 300 DPI.</li>
           <li>4 x 6 photo source images also work nicely.</li>
@@ -141,6 +179,6 @@
       <small>Supported input: PNG, JPG/JPEG, WebP. Unsupported files are ignored.</small>
     </footer>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=2026-11-08"></script>
   </body>
 </html>

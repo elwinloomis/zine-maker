@@ -1,6 +1,6 @@
 # Mini-Zine Imposition Tool (Standalone Local App)
 
-This project is a self-contained browser app for imposing 8 zine pages onto one US Letter sheet (11 x 8.5 in, landscape) for one-sheet 8-page mini-zines.
+This project is a self-contained browser app for imposing 8 zine pages onto one US Letter sheet (11 x 8.5 in, landscape) for one-sheet 8-page mini-zines. It also makes French fold cards: 4 panels on one sheet, folded twice, no cutting.
 
 No backend, no uploads, no network calls, and no CDN dependencies.
 
@@ -33,6 +33,18 @@ git push origin main
 ```
 
 After pushing to `main`, verify the live app at the GitHub Pages URL above.
+
+When `app.js` or `styles.css` changes, bump the `?v=` date on both references in `index.html` so browsers don't keep serving a cached copy.
+
+## Recent Updates (2026-11-08)
+
+- Added a French fold card format (4 panels, no cutting) alongside the 8-page zine:
+  - Card orientation: portrait (4.25 x 5.5 in, portrait sheet) or landscape (5.5 x 4.25 in, landscape sheet).
+  - Fold: side fold (opens like a book) or top fold (flips up).
+  - Print one side only, fold in half twice; fold steps are shown under the preview.
+- Click any panel in the preview (or its Choose button) to pick the image for that spot; × empties it.
+- Card mode hides the zine-only tools (folder picker, Auto-assign, alternate covers, cut guide, page numbers).
+- Fixed Open Print View showing a blank tab (the popup was opened with `noopener`, which hides it from the app).
 
 ## Recent Updates (2026-05-25)
 
@@ -68,12 +80,12 @@ python3 -m http.server 8000
 - `index.html` - UI shell
 - `styles.css` - app styling
 - `app.js` - image loading, imposition logic, preview, export
-- `one_sheet_8_page_zine_imposition_prd.md` - product spec
+- `one_sheet_8_page_zine_imposition_prd.md` - product spec (8-page zine)
 
 ## How to Run
 
 1. Open `index.html` directly in a modern browser, or serve the folder locally.
-2. Select a folder (or files) with zine images.
+2. Choose a format. For a zine, select a folder of images. For a card, click each panel to pick its image.
 3. Review/adjust slot assignments.
 4. Set margin, scaling, and guide options.
 5. Export PNG (recommended: 300 DPI) or open Print View.
