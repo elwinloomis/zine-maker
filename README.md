@@ -9,32 +9,11 @@ No backend, no uploads, no network calls, and no CDN dependencies.
 - GitHub Pages: https://elwinloomis.github.io/zine-maker/
 - Source repository: https://github.com/elwinloomis/zine-maker
 
-## Release Policy
+## Hosting It Yourself
 
-This repository is public and is intended as a shareable release build.
+The app is four static files (`index.html`, `app.js`, `styles.css`, `how_to_fold.jpg`). Put them on any static host, or open `index.html` locally. The public copy above is served by GitHub Pages from `main`.
 
-- Only push finished, public-ready changes to `main`.
-- Keep local-only development assets (for example test image sets and private notes) out of git.
-- Use local branches for in-progress work, and merge/push when a release is ready.
-- Keep sensitive/private files out of version control.
-- GitHub Pages deploys the public app from the `main` branch.
-
-## Release Workflow
-
-```bash
-git status
-git checkout -b dev/<feature-name>
-# make and test changes
-git add README.md index.html styles.css app.js one_sheet_8_page_zine_imposition_prd.md
-git commit -m "Describe the public-ready change"
-git checkout main
-git merge dev/<feature-name>
-git push origin main
-```
-
-After pushing to `main`, verify the live app at the GitHub Pages URL above.
-
-When `app.js` or `styles.css` changes, bump the `?v=` date on both references in `index.html` so browsers don't keep serving a cached copy.
+When you change `app.js` or `styles.css`, bump the `?v=` date on both references in `index.html` so browsers don't keep serving a cached copy.
 
 ## Recent Updates (2026-11-08)
 
